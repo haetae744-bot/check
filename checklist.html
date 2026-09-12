@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>체크리스트</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #ECE7DA;
+    --card: #F6F2E8;
+    --ink: #262420;
+    --ink-soft: #6B665B;
+    --rule: #CDC5B0;
+    --accent: #47624F;
+    --danger: #A24B3F;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'IBM Plex Mono', monospace;
+    min-height: 100vh;
+  }
+
+  body {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 48px 20px;
+  }
+
+  .sheet {
+    width: 100%;
+    max-width: 540px;
+    background: var(--card);
+    border: 1px solid var(--rule);
+    box-shadow: 0 1px 0 var(--rule), 0 14px 30px -18px rgba(38, 36, 32, 0.45);
+  }
+
+  header { padding: 28px 28px 4px; }
+
+  h1 {
+    margin: 0;
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 30px;
+    letter-spacing: 0.01em;
+  }
+
+  /* tabs */
+  .tabs {
+    display: flex;
+    gap: 6px;
+    padding: 16px 28px 0;
+    overflow-x: auto;
+    flex-wrap: wrap;
+  }
+
+  .tab {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 6px 6px 12px;
+    font-family: inherit;
+    font-size: 12.5px;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: var(--paper);
+    color: var(--ink-soft);
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+
+  .tab:hover { border-color: var(--ink-soft); }
+
+  .tab.active {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--card);
+  }
+
+  .tab-name {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .tab-del {
+    border: none;
+    background: none;
+    color: var(--ink-soft);
+    opacity: 0.55;
+    font-size: 13px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 2px;
+  }
+
+  .tab.active .tab-del { color: var(--card); }
+  .tab-del:hover { opacity: 1; color: var(--danger); }
+  .tab-del.confirm { opacity: 1; color: var(--danger); font-weight: 600; }
+  .tab.active .tab-del.confirm { color: #E8B4A8; }
+
+  .tab-del:disabled { cursor: default; opacity: 0.25; color: inherit; }
+
+  .tab-add {
+    background: none;
+    border: 1px dashed var(--rule);
+    border-radius: 3px;
+    color: var(--ink-soft);
+    font-family: inherit;
+    font-size: 14px;
+    padding: 6px 12px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .tab-add:hover { color: var(--ink); border-color: var(--ink-soft); }
+
+  .tab-input-wrap { display: flex; align-items: center; flex-shrink: 0; }
+
+  .tab-input {
+    border: 1px solid var(--ink-soft);
+    border-radius: 3px;
+    background: var(--card);
+    font-family: inherit;
+    font-size: 12.5px;
+    padding: 6px 9px;
+    outline: none;
+    width: 110px;
+  }
+
+  /* add row */
+  .add-row {
+    display: flex;
+    gap: 8px;
+    padding: 18px 28px 8px;
+  }
+
+  .add-row input[type="text"] {
+    flex: 1;
+    min-width: 0;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--rule);
+    font-family: inherit;
+    font-size: 14.5px;
+    color: var(--ink);
+    padding: 8px 2px;
+    outline: none;
+    transition: border-color 0.15s ease;
+  }
+
+  .add-row input[type="text"]::placeholder { color: var(--ink-soft); }
+  .add-row input[type="text"]:focus { border-bottom-color: var(--ink); }
+
+  .add-row button {
+    background: var(--ink);
+    color: var(--card);
+    border: none;
+    padding: 0 18px;
+    font-family: inherit;
+    font-size: 13.5px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+
+  .add-row button:hover { background: var(--accent); }
+  .add-row button:active { transform: translateY(1px); }
+
+  /* toolbar: copy / paste */
+  .toolbar {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 14px;
+    padding: 0 28px 14px;
+    font-size: 12px;
+  }
+
+  .toolbar button {
+    background: none;
+    border: none;
+    color: var(--ink-soft);
+    font-family: inherit;
+    font-size: 12px;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .toolbar button:hover, .toolbar button:focus-visible { color: var(--ink); }
+
+  .copy-feedback {
+    color: var(--accent);
+    font-size: 12px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+
+  .copy-feedback.show { opacity: 1; }
+
+  .paste-panel {
+    display: none;
+    padding: 0 28px 16px;
+  }
+
+  .paste-panel.open { display: block; }
+
+  .paste-panel textarea {
+    width: 100%;
+    min-height: 90px;
+    resize: vertical;
+    font-family: inherit;
+    font-size: 13px;
+    color: var(--ink);
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 10px;
+    outline: none;
+    box-sizing: border-box;
+  }
+
+  .paste-panel textarea:focus { border-color: var(--ink-soft); }
+
+  .paste-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 8px;
+    justify-content: flex-end;
+  }
+
+  .paste-actions button {
+    font-family: inherit;
+    font-size: 12.5px;
+    padding: 6px 14px;
+    cursor: pointer;
+    border-radius: 2px;
+  }
+
+  .paste-actions .import-btn {
+    background: var(--ink);
+    color: var(--card);
+    border: none;
+  }
+
+  .paste-actions .import-btn:hover { background: var(--accent); }
+
+  .paste-actions .cancel-btn {
+    background: none;
+    border: 1px solid var(--rule);
+    color: var(--ink-soft);
+  }
+
+  .paste-actions .cancel-btn:hover { color: var(--ink); border-color: var(--ink-soft); }
+
+  .rule { height: 1px; background: var(--rule); margin: 0 28px; }
+
+  ul.list { list-style: none; margin: 0; padding: 8px 8px; min-height: 40px; }
+
+  li.row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 20px;
+    border-radius: 2px;
+  }
+
+  .line-no { font-size: 12px; color: var(--ink-soft); width: 20px; flex-shrink: 0; text-align: right; }
+
+  .cb-wrap { position: relative; width: 19px; height: 19px; flex-shrink: 0; display: inline-flex; }
+
+  .cb-input {
+    position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer;
+    width: 100%; height: 100%; z-index: 2;
+  }
+
+  .cb-box {
+    position: absolute; inset: 0;
+    border: 1.5px solid var(--ink-soft);
+    background: transparent;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.18s ease, border-color 0.18s ease;
+  }
+
+  .cb-box svg { width: 12px; height: 12px; overflow: visible; }
+
+  .cb-box svg path {
+    fill: none; stroke: var(--card); stroke-width: 2.4;
+    stroke-linecap: round; stroke-linejoin: round;
+    stroke-dasharray: 16; stroke-dashoffset: 16;
+    transition: stroke-dashoffset 0.25s ease 0.02s;
+  }
+
+  .cb-input:checked + .cb-box { background: var(--accent); border-color: var(--accent); }
+  .cb-input:checked + .cb-box svg path { stroke-dashoffset: 0; }
+  .cb-input:focus-visible + .cb-box { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .item-text { flex: 1; min-width: 0; font-size: 14.5px; line-height: 1.4; word-break: break-word; transition: color 0.18s ease; }
+
+  li.row.done .item-text { color: var(--ink-soft); text-decoration: line-through; text-decoration-color: var(--rule); }
+
+  .del-btn {
+    background: none; border: none; color: var(--ink-soft);
+    font-size: 15px; line-height: 1; cursor: pointer; padding: 4px 6px; flex-shrink: 0;
+    transition: color 0.15s ease;
+  }
+
+  .del-btn:hover, .del-btn:focus-visible { color: var(--danger); }
+
+  .empty { padding: 30px 28px 34px; font-size: 13.5px; color: var(--ink-soft); }
+
+  footer {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 28px 24px; font-size: 12.5px; color: var(--ink-soft);
+  }
+
+  footer button {
+    background: none; border: none; color: var(--ink-soft);
+    font-family: inherit; font-size: 12.5px;
+    text-decoration: underline; text-underline-offset: 2px;
+    cursor: pointer; padding: 0;
+  }
+
+  footer button:hover, footer button:focus-visible { color: var(--ink); }
+  footer button:disabled { opacity: 0.4; cursor: default; text-decoration: none; }
+
+  .loading { padding: 30px 28px; font-size: 13px; color: var(--ink-soft); }
+
+  @media (max-width: 480px) {
+    body { padding: 24px 12px; }
+    header, .add-row, .toolbar, footer, .paste-panel { padding-left: 20px; padding-right: 20px; }
+    .tabs { padding-left: 20px; padding-right: 20px; }
+    .rule { margin: 0 20px; }
+    li.row { padding: 10px 12px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="sheet">
+    <header>
+      <h1>체크리스트</h1>
+    </header>
+
+    <div class="tabs" id="tabsContainer"></div>
+
+    <div class="add-row">
+      <input type="text" id="newItemInput" placeholder="새 항목을 적어보세요" maxlength="200" autocomplete="off" />
+      <button id="addBtn" type="button">추가</button>
+    </div>
+
+    <div class="toolbar">
+      <span class="copy-feedback" id="copyFeedback">복사됨</span>
+      <button id="pasteToggleBtn" type="button">붙여넣기</button>
+      <button id="copyBtn" type="button">복사</button>
+    </div>
+
+    <div class="paste-panel" id="pastePanel">
+      <textarea id="pasteArea" placeholder="여기에 붙여넣으세요. 한 줄에 항목 하나씩 추가돼요."></textarea>
+      <div class="paste-actions">
+        <button class="cancel-btn" type="button" id="pasteCancelBtn">취소</button>
+        <button class="import-btn" type="button" id="pasteImportBtn">가져오기</button>
+      </div>
+    </div>
+
+    <div class="rule"></div>
+
+    <div id="listContainer">
+      <div class="loading">불러오는 중…</div>
+    </div>
+
+    <div class="rule"></div>
+
+    <footer>
+      <span id="countLabel"></span>
+      <button id="clearDoneBtn" type="button">완료 항목 지우기</button>
+    </footer>
+  </div>
+
+<script>
+(function () {
+  const STORAGE_KEY = 'checklist:sheets';
+  const OLD_KEY = 'checklist:items';
+
+  let sheets = [];
+  let activeId = null;
+  let loaded = false;
+  let addingTab = false;
+  let renamingId = null;
+  let confirmDeleteId = null;
+  let confirmTimer = null;
+
+  const tabsContainer = document.getElementById('tabsContainer');
+  const listContainer = document.getElementById('listContainer');
+  const countLabel = document.getElementById('countLabel');
+  const clearDoneBtn = document.getElementById('clearDoneBtn');
+  const newItemInput = document.getElementById('newItemInput');
+  const addBtn = document.getElementById('addBtn');
+  const copyBtn = document.getElementById('copyBtn');
+  const copyFeedback = document.getElementById('copyFeedback');
+  const pasteToggleBtn = document.getElementById('pasteToggleBtn');
+  const pastePanel = document.getElementById('pastePanel');
+  const pasteArea = document.getElementById('pasteArea');
+  const pasteCancelBtn = document.getElementById('pasteCancelBtn');
+  const pasteImportBtn = document.getElementById('pasteImportBtn');
+
+  function uid(prefix) {
+    return prefix + Date.now() + Math.random().toString(36).slice(2, 7);
+  }
+
+  function activeSheet() {
+    return sheets.find(s => s.id === activeId) || sheets[0];
+  }
+
+  function checkIconSVG() {
+    return '<svg viewBox="0 0 12 12"><path d="M2 6.2 L4.8 9 L10 3"/></svg>';
+  }
+
+  function escapeAttr(s) {
+    return String(s).replace(/"/g, '&quot;');
+  }
+
+  /* ---------- persistence ---------- */
+
+  async function loadState() {
+    try {
+      const result = await window.storage.get(STORAGE_KEY, false);
+      if (result && result.value) {
+        const parsed = JSON.parse(result.value);
+        sheets = parsed.sheets || [];
+        activeId = parsed.activeId || (sheets[0] && sheets[0].id);
+      }
+    } catch (err) {
+      sheets = [];
+    }
+
+    if (!sheets || sheets.length === 0) {
+      // try migrating from the old single-list version
+      let migratedItems = [];
+      try {
+        const old = await window.storage.get(OLD_KEY, false);
+        if (old && old.value) migratedItems = JSON.parse(old.value);
+      } catch (err) {
+        migratedItems = [];
+      }
+      sheets = [{ id: uid('s'), name: '체크리스트', items: migratedItems }];
+      activeId = sheets[0].id;
+      saveState();
+    }
+
+    loaded = true;
+    renderTabs();
+    renderList();
+  }
+
+  async function saveState() {
+    try {
+      await window.storage.set(STORAGE_KEY, JSON.stringify({ sheets, activeId }), false);
+    } catch (err) {
+      console.error('저장 실패', err);
+    }
+  }
+
+  /* ---------- tabs ---------- */
+
+  function renderTabs() {
+    tabsContainer.innerHTML = '';
+
+    sheets.forEach(sheet => {
+      const tab = document.createElement('button');
+      tab.type = 'button';
+      tab.className = 'tab' + (sheet.id === activeId ? ' active' : '');
+      tab.setAttribute('aria-pressed', sheet.id === activeId ? 'true' : 'false');
+
+      if (renamingId === sheet.id) {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'tab-input';
+        input.maxLength = 30;
+        input.value = sheet.name;
+        input.addEventListener('click', (e) => e.stopPropagation());
+
+        let settled = false;
+        const commitRename = (save) => {
+          if (settled) return;
+          settled = true;
+          renamingId = null;
+          if (save) {
+            const name = input.value.trim();
+            if (name) sheet.name = name;
+            saveState();
+          }
+          renderTabs();
+        };
+
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') commitRename(true);
+          if (e.key === 'Escape') commitRename(false);
+        });
+        input.addEventListener('blur', () => setTimeout(() => commitRename(true), 100));
+
+        tab.appendChild(input);
+        tabsContainer.appendChild(tab);
+        setTimeout(() => { input.focus(); input.select(); }, 0);
+        return;
+      }
+
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'tab-name';
+      nameSpan.textContent = sheet.name;
+      tab.title = '다시 클릭하면 이름을 바꿀 수 있어요';
+      tab.appendChild(nameSpan);
+
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'tab-del' + (confirmDeleteId === sheet.id ? ' confirm' : '');
+      delBtn.textContent = confirmDeleteId === sheet.id ? '삭제?' : '×';
+      delBtn.setAttribute('aria-label', sheet.name + ' 시트 삭제');
+      if (sheets.length <= 1) delBtn.disabled = true;
+
+      delBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        handleDeleteClick(sheet.id);
+      });
+
+      tab.appendChild(delBtn);
+
+      tab.addEventListener('click', () => {
+        if (activeId === sheet.id) {
+          renamingId = sheet.id;
+          confirmDeleteId = null;
+          renderTabs();
+          return;
+        }
+        activeId = sheet.id;
+        confirmDeleteId = null;
+        saveState();
+        renderTabs();
+        renderList();
+      });
+
+      tabsContainer.appendChild(tab);
+    });
+
+    if (addingTab) {
+      const wrap = document.createElement('span');
+      wrap.className = 'tab-input-wrap';
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'tab-input';
+      input.placeholder = '이름';
+      input.maxLength = 30;
+      wrap.appendChild(input);
+      tabsContainer.appendChild(wrap);
+
+      setTimeout(() => input.focus(), 0);
+
+      let settled = false;
+      function commit(save) {
+        if (settled) return;
+        settled = true;
+        addingTab = false;
+        if (save) {
+          const name = input.value.trim();
+          if (name) {
+            const newSheet = { id: uid('s'), name: name, items: [] };
+            sheets.push(newSheet);
+            activeId = newSheet.id;
+            saveState();
+          }
+        }
+        renderTabs();
+        renderList();
+      }
+
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') commit(true);
+        if (e.key === 'Escape') commit(false);
+      });
+      input.addEventListener('blur', () => {
+        setTimeout(() => commit(true), 100);
+      });
+    } else {
+      const addBtnTab = document.createElement('button');
+      addBtnTab.type = 'button';
+      addBtnTab.className = 'tab-add';
+      addBtnTab.textContent = '+';
+      addBtnTab.setAttribute('aria-label', '사람 추가');
+      addBtnTab.addEventListener('click', () => {
+        addingTab = true;
+        renderTabs();
+      });
+      tabsContainer.appendChild(addBtnTab);
+    }
+  }
+
+  function handleDeleteClick(sheetId) {
+    if (sheets.length <= 1) return;
+
+    if (confirmDeleteId === sheetId) {
+      clearTimeout(confirmTimer);
+      const idx = sheets.findIndex(s => s.id === sheetId);
+      sheets.splice(idx, 1);
+      if (activeId === sheetId) {
+        const fallback = sheets[idx] || sheets[idx - 1] || sheets[0];
+        activeId = fallback.id;
+      }
+      confirmDeleteId = null;
+      saveState();
+      renderTabs();
+      renderList();
+    } else {
+      confirmDeleteId = sheetId;
+      renderTabs();
+      clearTimeout(confirmTimer);
+      confirmTimer = setTimeout(() => {
+        confirmDeleteId = null;
+        renderTabs();
+      }, 3000);
+    }
+  }
+
+  /* ---------- list ---------- */
+
+  function renderList() {
+    if (!loaded) {
+      listContainer.innerHTML = '<div class="loading">불러오는 중…</div>';
+      return;
+    }
+
+    const sheet = activeSheet();
+    const items = sheet ? sheet.items : [];
+
+    if (items.length === 0) {
+      listContainer.innerHTML = '<div class="empty">아직 목록이 비어 있어요. 항목을 추가하거나 붙여넣어보세요.</div>';
+    } else {
+      const ul = document.createElement('ul');
+      ul.className = 'list';
+
+      items.forEach((item, idx) => {
+        const li = document.createElement('li');
+        li.className = 'row' + (item.done ? ' done' : '');
+        li.dataset.id = item.id;
+
+        const lineNo = String(idx + 1).padStart(2, '0');
+
+        li.innerHTML =
+          '<span class="line-no">' + lineNo + '</span>' +
+          '<span class="cb-wrap">' +
+            '<input type="checkbox" class="cb-input" ' + (item.done ? 'checked' : '') + ' aria-label="' + escapeAttr(item.text) + ' 완료 표시" />' +
+            '<span class="cb-box">' + checkIconSVG() + '</span>' +
+          '</span>' +
+          '<span class="item-text"></span>' +
+          '<button type="button" class="del-btn" aria-label="' + escapeAttr(item.text) + ' 삭제">×</button>';
+
+        li.querySelector('.item-text').textContent = item.text;
+
+        const cbInput = li.querySelector('.cb-input');
+        cbInput.addEventListener('change', () => toggleDone(item.id, li, cbInput.checked));
+
+        const delBtn = li.querySelector('.del-btn');
+        delBtn.addEventListener('click', () => deleteItem(item.id));
+
+        ul.appendChild(li);
+      });
+
+      listContainer.innerHTML = '';
+      listContainer.appendChild(ul);
+    }
+
+    updateFooter();
+  }
+
+  function updateFooter() {
+    const items = activeSheet() ? activeSheet().items : [];
+    const total = items.length;
+    const done = items.filter(i => i.done).length;
+    countLabel.textContent = total === 0 ? '' : (total + '개 항목 중 ' + done + '개 완료');
+    clearDoneBtn.disabled = done === 0;
+  }
+
+  function addItem() {
+    const text = newItemInput.value.trim();
+    if (!text) return;
+    activeSheet().items.push({ id: uid('i'), text, done: false });
+    newItemInput.value = '';
+    saveState();
+    renderList();
+    newItemInput.focus();
+  }
+
+  function deleteItem(id) {
+    const sheet = activeSheet();
+    sheet.items = sheet.items.filter(i => i.id !== id);
+    saveState();
+    renderList();
+  }
+
+  function toggleDone(id, rowEl, isChecked) {
+    const item = activeSheet().items.find(i => i.id === id);
+    if (!item) return;
+    item.done = isChecked;
+    rowEl.classList.toggle('done', isChecked);
+    updateFooter();
+    saveState();
+  }
+
+  function clearDone() {
+    const sheet = activeSheet();
+    sheet.items = sheet.items.filter(i => !i.done);
+    saveState();
+    renderList();
+  }
+
+  /* ---------- copy / paste ---------- */
+
+  function itemsToText(items) {
+    return items.map(i => '[' + (i.done ? 'x' : ' ') + '] ' + i.text).join('\n');
+  }
+
+  async function copyList() {
+    const text = itemsToText(activeSheet().items);
+    let ok = false;
+    try {
+      await navigator.clipboard.writeText(text);
+      ok = true;
+    } catch (err) {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+      } catch (err2) {
+        ok = false;
+      }
+    }
+    if (ok) {
+      copyFeedback.classList.add('show');
+      setTimeout(() => copyFeedback.classList.remove('show'), 1400);
+    }
+  }
+
+  function parsePastedLines(raw) {
+    return raw.split(/\r?\n/)
+      .map(line => line.trim())
+      .filter(line => line.length > 0)
+      .map(line => {
+        let done = false;
+        let text = line;
+        const bracketMatch = text.match(/^\[( |x|X)\]\s*(.*)$/);
+        if (bracketMatch) {
+          done = bracketMatch[1].toLowerCase() === 'x';
+          text = bracketMatch[2];
+        } else {
+          text = text.replace(/^[-*•]\s*/, '');
+        }
+        return { id: uid('i'), text: text, done: done };
+      })
+      .filter(item => item.text.length > 0);
+  }
+
+  function importPasted() {
+    const newItems = parsePastedLines(pasteArea.value);
+    if (newItems.length > 0) {
+      activeSheet().items = activeSheet().items.concat(newItems);
+      saveState();
+      renderList();
+    }
+    pasteArea.value = '';
+    pastePanel.classList.remove('open');
+  }
+
+  /* ---------- events ---------- */
+
+  addBtn.addEventListener('click', addItem);
+  newItemInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') addItem(); });
+  clearDoneBtn.addEventListener('click', clearDone);
+  copyBtn.addEventListener('click', copyList);
+
+  pasteToggleBtn.addEventListener('click', () => {
+    pastePanel.classList.toggle('open');
+    if (pastePanel.classList.contains('open')) pasteArea.focus();
+  });
+  pasteCancelBtn.addEventListener('click', () => {
+    pasteArea.value = '';
+    pastePanel.classList.remove('open');
+  });
+  pasteImportBtn.addEventListener('click', importPasted);
+
+  loadState();
+})();
+</script>
+
+</body>
+</html>
