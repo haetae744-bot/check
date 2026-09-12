@@ -307,9 +307,68 @@
   .cb-input:checked + .cb-box svg path { stroke-dashoffset: 0; }
   .cb-input:focus-visible + .cb-box { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-  .item-text { flex: 1; min-width: 0; font-size: 14.5px; line-height: 1.4; word-break: break-word; transition: color 0.18s ease; }
+  .item-text-wrap { flex: 1; min-width: 0; display: flex; }
+
+  .item-text {
+    flex: 1;
+    min-width: 0;
+    font-family: inherit;
+    font-size: 14.5px;
+    line-height: 1.4;
+    text-align: left;
+    word-break: break-word;
+    background: none;
+    border: none;
+    padding: 2px 0;
+    margin: 0;
+    color: inherit;
+    cursor: pointer;
+    transition: color 0.18s ease;
+  }
+
+  .item-text:hover {
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-decoration-color: var(--rule);
+    text-underline-offset: 3px;
+  }
 
   li.row.done .item-text { color: var(--ink-soft); text-decoration: line-through; text-decoration-color: var(--rule); }
+  li.row.done .item-text:hover { text-decoration: line-through; text-decoration-color: var(--ink-soft); }
+
+  .item-edit-input {
+    flex: 1;
+    min-width: 0;
+    font-family: inherit;
+    font-size: 14.5px;
+    color: var(--ink);
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--ink-soft);
+    padding: 2px 0;
+    outline: none;
+  }
+
+  .row-actions {
+    display: flex;
+    align-items: center;
+    gap: 1px;
+    flex-shrink: 0;
+  }
+
+  .order-btn {
+    background: none;
+    border: none;
+    color: var(--ink-soft);
+    font-size: 9px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 5px 4px;
+    transition: color 0.15s ease;
+  }
+
+  .order-btn:hover:not(:disabled), .order-btn:focus-visible:not(:disabled) { color: var(--ink); }
+  .order-btn:disabled { opacity: 0.25; cursor: default; }
 
   .del-btn {
     background: none; border: none; color: var(--ink-soft);
@@ -403,6 +462,7 @@
   let loaded = false;
   let addingTab = false;
   let renamingId = null;
+  let editingItemId = null;
   let confirmDeleteId = null;
   let confirmTimer = null;
 
@@ -438,9 +498,35 @@
 
   /* ---------- persistence ---------- */
 
+  // Claude 미리보기 안에서는 window.storage를 쓰고, 그 밖(예: GitHub Pages 등
+  // 파일을 그대로 열었을 때)에서는 이 API가 없으므로 localStorage로 대신합니다.
+  // 두 저장소는 서로 다른 공간이라 데이터가 자동으로 옮겨지진 않습니다.
+  const hasClaudeStorage = typeof window.storage !== 'undefined'
+    && window.storage && typeof window.storage.get === 'function';
+
+  async function storageGet(key) {
+    if (hasClaudeStorage) {
+      try { return await window.storage.get(key, false); }
+      catch (err) { return null; }
+    }
+    try {
+      const v = localStorage.getItem(key);
+      return v !== null ? { key, value: v } : null;
+    } catch (err) { return null; }
+  }
+
+  async function storageSet(key, value) {
+    if (hasClaudeStorage) {
+      try { return await window.storage.set(key, value, false); }
+      catch (err) { return null; }
+    }
+    try { localStorage.setItem(key, value); return { key, value }; }
+    catch (err) { return null; }
+  }
+
   async function loadState() {
     try {
-      const result = await window.storage.get(STORAGE_KEY, false);
+      const result = await storageGet(STORAGE_KEY);
       if (result && result.value) {
         const parsed = JSON.parse(result.value);
         sheets = parsed.sheets || [];
@@ -454,7 +540,7 @@
       // try migrating from the old single-list version
       let migratedItems = [];
       try {
-        const old = await window.storage.get(OLD_KEY, false);
+        const old = await storageGet(OLD_KEY);
         if (old && old.value) migratedItems = JSON.parse(old.value);
       } catch (err) {
         migratedItems = [];
@@ -471,7 +557,7 @@
 
   async function saveState() {
     try {
-      await window.storage.set(STORAGE_KEY, JSON.stringify({ sheets, activeId }), false);
+      await storageSet(STORAGE_KEY, JSON.stringify({ sheets, activeId }));
     } catch (err) {
       console.error('저장 실패', err);
     }
@@ -666,13 +752,63 @@
             '<input type="checkbox" class="cb-input" ' + (item.done ? 'checked' : '') + ' aria-label="' + escapeAttr(item.text) + ' 완료 표시" />' +
             '<span class="cb-box">' + checkIconSVG() + '</span>' +
           '</span>' +
-          '<span class="item-text"></span>' +
-          '<button type="button" class="del-btn" aria-label="' + escapeAttr(item.text) + ' 삭제">×</button>';
+          '<span class="item-text-wrap"></span>' +
+          '<span class="row-actions">' +
+            '<button type="button" class="order-btn" data-dir="-1" aria-label="' + escapeAttr(item.text) + ' 위로 이동">&#9650;</button>' +
+            '<button type="button" class="order-btn" data-dir="1" aria-label="' + escapeAttr(item.text) + ' 아래로 이동">&#9660;</button>' +
+            '<button type="button" class="del-btn" aria-label="' + escapeAttr(item.text) + ' 삭제">×</button>' +
+          '</span>';
 
-        li.querySelector('.item-text').textContent = item.text;
+        const textWrap = li.querySelector('.item-text-wrap');
+
+        if (editingItemId === item.id) {
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.className = 'item-edit-input';
+          input.maxLength = 200;
+          input.value = item.text;
+          textWrap.appendChild(input);
+
+          let settled = false;
+          const commitEdit = (save) => {
+            if (settled) return;
+            settled = true;
+            editingItemId = null;
+            if (save) {
+              const text = input.value.trim();
+              if (text) item.text = text;
+              saveState();
+            }
+            renderList();
+          };
+
+          input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') commitEdit(true);
+            if (e.key === 'Escape') commitEdit(false);
+          });
+          input.addEventListener('blur', () => setTimeout(() => commitEdit(true), 100));
+          setTimeout(() => { input.focus(); input.select(); }, 0);
+        } else {
+          const textBtn = document.createElement('button');
+          textBtn.type = 'button';
+          textBtn.className = 'item-text';
+          textBtn.textContent = item.text;
+          textBtn.addEventListener('click', () => {
+            editingItemId = item.id;
+            renderList();
+          });
+          textWrap.appendChild(textBtn);
+        }
 
         const cbInput = li.querySelector('.cb-input');
         cbInput.addEventListener('change', () => toggleDone(item.id, li, cbInput.checked));
+
+        const upBtn = li.querySelector('.order-btn[data-dir="-1"]');
+        const downBtn = li.querySelector('.order-btn[data-dir="1"]');
+        if (idx === 0) upBtn.disabled = true;
+        if (idx === items.length - 1) downBtn.disabled = true;
+        upBtn.addEventListener('click', () => moveItem(item.id, -1));
+        downBtn.addEventListener('click', () => moveItem(item.id, 1));
 
         const delBtn = li.querySelector('.del-btn');
         delBtn.addEventListener('click', () => deleteItem(item.id));
@@ -708,6 +844,18 @@
   function deleteItem(id) {
     const sheet = activeSheet();
     sheet.items = sheet.items.filter(i => i.id !== id);
+    saveState();
+    renderList();
+  }
+
+  function moveItem(id, direction) {
+    const sheet = activeSheet();
+    const idx = sheet.items.findIndex(i => i.id === id);
+    if (idx === -1) return;
+    const newIdx = idx + direction;
+    if (newIdx < 0 || newIdx >= sheet.items.length) return;
+    const [moved] = sheet.items.splice(idx, 1);
+    sheet.items.splice(newIdx, 0, moved);
     saveState();
     renderList();
   }
